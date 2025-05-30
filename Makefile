@@ -2,12 +2,12 @@ CXX = g++
 CXXFLAGS = -std=c++17 -Wall -Wextra -g
 INCLUDES = -Iincludes
 
-TARGET = order book
+TARGET = order_book
 
 SRC_DIR = src
 BUILD_DIR = build
 
-SRCS := $(shell find $(SRC_DIR) -name "*.cpp")
+SRCS := main.cpp $(shell find $(SRC_DIR) -name "*.cpp")
 OBJS := $(SRCS:$(SRC_DIR)/%.cpp=$(BUILD_DIR)/%.o)
 OBJ_DIRS := $(sort $(dir $(OBJS)))
 
