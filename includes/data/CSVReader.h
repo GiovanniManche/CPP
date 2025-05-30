@@ -33,6 +33,11 @@ public:
     // Affichage des ordres (debug)
     void Display();
 
+    // Récupération des ordres
+    const std::vector<Order>& getOrders() const {
+        return orders;
+    }
+
 private:
     std::fstream file_;
     std::vector<Order> orders;

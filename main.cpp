@@ -1,17 +1,19 @@
-#include <fstream>
-#include <string>
 #include <iostream>
-#include <memory> // Shared ptr pointeur intelligents ==> dès qu'ils ne sont plus utilisés, sont delete automatiquement
 #include "includes/data/CSVReader.h"
+#include "includes/core/MatchingEngine.h"  
 
 int main() {
-    // Initialisation du CSV reader
-    CsvReader test("input.csv");
-
-    // Récupération des ordres
-    test.init();
-
-    // Visualisation
-    test.Display();
+    // Chargement des ordres
+    CsvReader csvReader("input_orders_final.csv");
+    csvReader.init();
+    csvReader.Display();
+    
+    // Matching Engine
+    MatchingEngine engine;
+    engine.processAllOrders(csvReader.getOrders());
+    
+    // Affichage des résultats
+    engine.displayResults();
+    
     return 0;
 }
