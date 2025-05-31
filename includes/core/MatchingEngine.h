@@ -1,4 +1,6 @@
-#pragma once
+#ifndef MATCHING_ENGINE_H
+#define MATCHING_ENGINE_H
+
 #include <vector>
 #include <queue>
 #include <map>
@@ -70,9 +72,6 @@ private:
     std::priority_queue<Order, std::vector<Order>, BuyComparator> buy_book;
     std::priority_queue<Order, std::vector<Order>, SellComparator> sell_book;
     
-    // Historique des trades (output final)
-    std::vector<OrderResult> historic_trades;
-    
     // Ordres impactés temporaires (pour l'ordre d'affichage)
     std::vector<OrderResult> pending_impacted_orders;
     
@@ -83,6 +82,10 @@ private:
     long long current_timestamp;
 
 public:
+
+    // Historique des trades (output final)
+    std::vector<OrderResult> historic_trades;
+
     // Constructeur
     MatchingEngine();
     
@@ -126,3 +129,5 @@ private:
     OrderResult createResult(const Order& order, const std::string& status, 
                            int exec_qty = 0, float exec_price = 0.0f, int counterparty = 0);
 };
+
+#endif

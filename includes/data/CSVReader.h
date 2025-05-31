@@ -38,6 +38,26 @@ public:
         return orders;
     }
 
+    // Méthode pour tester la récupération du timestamp
+    long long testTimestamp(std::string value);
+
+    // Méthode pour tester l'id
+
+    // Méthode pour tester le side
+    std::string testSide(std::string rowValue);
+
+    // Méthode pour tester le type d'ordre
+    std::string testType(std::string rowValue);
+
+    // Méthode pour tester la quantité
+    int testQuantity(std::string rowValue);
+
+    // Méthode pour tester le prix
+
+
+    // Méthode pour tester le type d'action
+    std::string testAction(std::string rowValue);
+
 private:
     std::fstream file_;
     std::vector<Order> orders;

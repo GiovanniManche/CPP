@@ -74,3 +74,89 @@ void CsvReader::Display(){
         std::cout << order.timestamp << " " << order.order_id << " " << order.instrument << " " << order.side << " " << order.type << " " << order.quantity << " " << order.price << " " << order.action << std::endl;
     };
 }
+
+// Méthode permettant de tester la récupération d'un timestamp
+long long CsvReader::testTimestamp(std::string rowValue){
+
+    long long timestamp;
+    // Vérification que la conversion en long long est possible
+    try{
+        timestamp = std::stoll(rowValue);
+    }catch (long long error){
+        std::cout << "Problème dans la conversion du timestamp" << std::endl;
+        std::cout << error << std::endl;
+    }
+
+    // Si le test est passé, vérification que le timestamp ne soit pas négatif
+    if(timestamp < 0){
+        throw std::runtime_error("Un timestamp ne peut pas être négatif");
+    }
+
+    // Récupération du timestamp
+    return(timestamp);
+}
+
+// Méthode permettant de tester la récupération du side
+std::string CsvReader::testSide(std::string rowValue){
+    std::string side = rowValue;
+    if(side != "BUY" || side != "SELL"){
+        std::cout << side << std::endl;
+        throw std::runtime_error("L'ordre doit être un ordre d'achat (BUY) ou de vente (SELL)");
+    }
+
+    // Récupération
+    return(side);
+}
+
+// Méthode permettant de tester le type d'ordre
+std::string CsvReader::testType(std::string rowValue){
+    std::string type;
+
+    // Vérification du type d'ordre : seul limite et marché sont implémentés
+    if(rowValue == "LIMIT"){
+        type = rowValue;
+    }else if(rowValue == "MARKET"){
+        type = rowValue;
+    }else{
+        throw std::runtime_error("Seuls les ordres à cours limité / au marché sont implémentés");
+    }
+
+    // Récupération du type d'ordre
+    return(type);
+}
+
+// Méthode permettant de tester la quantité
+int CsvReader::testQuantity(std::string rowValue){
+
+    int quantity;
+
+    // Vérification que l'on peut convertir la quantité
+    try{
+        quantity = std::stoi(rowValue);
+    }catch(int error){
+        std::cout << rowValue << std::endl;
+        std::runtime_error("Problème dans la conversion de la quantité");
+    }
+
+    // Si la conversion a bien eu lieu, vérification qu'elle est positive
+    if(quantity <= 0){
+        std::cout << quantity << std::endl;
+        std::runtime_error("La quantité ne peut pas être négative ou nulle");
+    }
+
+    // Si les tests sont passés, on récupère la quantité
+    return(quantity);
+}
+
+// Méthode permettant de tester le type d'action
+std::string CsvReader::testAction(std::string rowValue){
+
+    std::string action;
+    if(rowValue == "NEW" || rowValue == "MODIFY" || rowValue == "CANCEL"){
+        action = rowValue;
+    }else{
+        std::cout << rowValue << std::endl;
+        throw std::runtime_error("Les seules actions implémentées sont : NEW, MODIFY et CANCEL");
+    }
+    return(action);
+}
