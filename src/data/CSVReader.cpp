@@ -203,7 +203,7 @@ int CsvReader::testQuantity(std::string rowValue){
     // Si la conversion a bien eu lieu, vérification qu'elle est positive
     if(quantity <= 0){
         std::cout << quantity << std::endl;
-        std::runtime_error("La quantité ne peut pas être négative ou nulle");
+        throw std::runtime_error("La quantité ne peut pas être négative ou nulle");
     }
 
     // Si les tests sont passés, on récupère la quantité

@@ -35,17 +35,5 @@ int main() {
         std::vector<OrderResult> trade_historic = engine.getTradeHistoric();
         csvWriter_test.WriteToCsv(trade_historic);
     }
-
-    // Matching Engine
-    // MatchingEngine engine;
-    // engine.processAllOrders(csvReader.getOrders());
-
-    // Affichage des résultats
-    // engine.displayResults();
-
-    // Sauvegarde en csv
-    // CsvWriter csvWriter("output.csv");
-    // csvWriter.WriteToCsv(engine.historic_trades);
-    
     return 0;
 }
