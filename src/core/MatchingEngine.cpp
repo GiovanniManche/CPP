@@ -24,25 +24,54 @@ MatchingEngine::~MatchingEngine() {
 //      puis selon la règle FIFO
 //######################################################################################################################################################
 
-
 std::vector<OrderResult> MatchingEngine::processAllOrders(const std::vector<Order>& orders) {
     // ################################################################################################
     // Cette fonction permet de traiter séquentiellement tous les ordres (en bouclant)
     // Elle prend en input le vecteur contenant les ordres (après passage par le CSVReader)
     // Elle renvoie l'historique des trades / actions
+    // On fait aussi un contrôle du tri par timestamp avant traitement
     // ################################################################################################
 
     std::cout << "\n=== DÉBUT DU MATCHING ENGINE ===" << std::endl;
     std::cout << "Nombre d'ordres à traiter : " << orders.size() << std::endl;
     
-    // Boucle sur la liste (on itère tant qu'on n'est pas à la fin de la liste)
-    for (size_t i = 0; i < orders.size(); i++) {
+    // ################################################################################################
+    // On contrôle si le vecteur passé en input est bien trié par timestamp
+    // ################################################################################################
+    // Copie modifiable du vecteur d'ordres
+    std::vector<Order> sorted_orders = orders;
+    bool is_sorted = true;
+    for (size_t i = 1; i < sorted_orders.size(); i++) {
+        if (sorted_orders[i].timestamp < sorted_orders[i-1].timestamp) {
+            is_sorted = false;
+            break;
+        }
+    }
+    
+    // Si pas trié, on trie
+    if (!is_sorted) {
+        std::cout << "Les ordres ne sont pas triés par timestamp. On trie automatiquement" << std::endl;
+        std::sort(sorted_orders.begin(), sorted_orders.end(), 
+                  [](const Order& a, const Order& b) {
+                      return a.timestamp < b.timestamp;
+                  });
+    // DEBUG
+    } else {
+        std::cout << "Ordres déjà correctement triés par timestamp" << std::endl;
+    }
+    
+    // ################################################################################################
+    // TRAITEMENT DES ORDRES 
+    // ################################################################################################
+    
+    // Boucle sur la liste triée (on itère tant qu'on n'est pas à la fin de la liste)
+    for (size_t i = 0; i < sorted_orders.size(); i++) {
 
-        // On récupère le nouvel ordre depuis le vecteur
-        Order current_order = orders[i];
+        // On récupère le nouvel ordre depuis le vecteur trié
+        Order current_order = sorted_orders[i];
         
         // Debug
-        std::cout << "\n--- Traitement ordre " << (i+1) << "/" << orders.size() << " ---" << std::endl;
+        std::cout << "\n--- Traitement ordre " << (i+1) << "/" << sorted_orders.size() << " ---" << std::endl;
         std::cout << "ID: " << current_order.order_id << " | Action: " << current_order.action 
                   << " | Side: " << current_order.side << " | Qty: " << current_order.quantity 
                   << " | Price: " << current_order.price << std::endl;
@@ -68,16 +97,42 @@ std::vector<OrderResult> MatchingEngine::processAllOrders(const std::vector<Orde
     return historic_trades;
 }
 
-// NEW : On tente le Matching puis si besoin on ajoute le résidu au carnet
+
 void MatchingEngine::handleNew(const Order& order) {
     // ################################################################################################
-    // Fonction qui gère l'action NEW
+    // Fonction qui gère l'action NEW 
     // Concrètement, on récupère l'ordre et on regarde s'il peut être matché avec un / des ordres opposés,
+    // Pour chaque match individuel, on génère une ligne dans l'historique
     // Puis si besoin, on ajoute l'ordre (avec quantité et état mis à jour) dans les books BUY et SELL.
-    // Dans tous les cas, l'action est répertoriée dans l'historique, avec état et quantité mis à jour au timestamp correspondant
+    // On contrôle que l'ID n'existe pas déjà et que ce n'est pas un bad input
     // ################################################################################################
     std::cout << "Action NEW - Tentative de matching..." << std::endl;
     
+    // ################################################################################################
+    // On contrôle que l'ID n'existe pas déjà
+    // ################################################################################################
+    auto existing_order = order_map.find(order.order_id);
+    if (existing_order != order_map.end()) {
+        std::cout << "ERREUR: ID " << order.order_id << " existe déjà pour un ordre NEW !" << std::endl;
+        std::cout << "Ordre existant: Side=" << existing_order->second.side 
+                  << ", Qty=" << existing_order->second.quantity 
+                  << ", Price=" << existing_order->second.price << std::endl;
+        OrderResult result = createResult(order, "REJECTED");
+        historic_trades.push_back(result);
+        return;
+    }
+    
+    // ################################################################################################
+    // On contrôle que le type n'est pas "BAD_INPUT"
+    // ################################################################################################
+     if (order.type == "BAD_INPUT") {
+        std::cout << "ERREUR: Type BAD_INPUT détecté pour l'ordre ID " << order.order_id << " - Ordre rejeté" << std::endl;
+        OrderResult result = createResult(order, "REJECTED");
+        historic_trades.push_back(result);
+        return;
+    }
+
+
     // 1. MATCHING
     Order working_order = order;  // Copie pour modification des quantités
     std::vector<Trade> matches = tryMatch(working_order);
@@ -100,74 +155,56 @@ void MatchingEngine::handleNew(const Order& order) {
             historic_trades.push_back(result);
         }
     
-    // 1.2. Si match : 
+    // 1.2. Si match :
     } else {
-        // Initialisation
-        int total_executed = 0;
-        float weighted_price = 0.0f;
-        int counterparty_id = 0;
+        int remaining_order_qty = order.quantity;
         
         // Boucle sur tous les trades générés par tryMatch()
-        for (const Trade& trade : matches) {
-            // Mise à jour des quantités et prix 
-            total_executed += trade.quantity;
-            weighted_price += trade.price * trade.quantity;
+        for (size_t i = 0; i < matches.size(); i++) {
+            const Trade& trade = matches[i];
+            remaining_order_qty -= trade.quantity;
+            
             // Contrepartie : si l'ordre est d'achat, contrepartie = SELL, et inversement
-            counterparty_id = (order.side == "BUY") ? trade.sell_order_id : trade.buy_order_id;
-            // Debug
-            std::cout << "MATCH: " << trade.quantity << " @ " << trade.price 
+            int counterparty_id = (order.side == "BUY") ? trade.sell_order_id : trade.buy_order_id;
+            
+            std::cout << "MATCH " << (i+1) << "/" << matches.size() << ": " 
+                      << trade.quantity << " @ " << trade.price 
                       << " contre ordre " << counterparty_id << std::endl;
-        }
-        
-        if (total_executed > 0) {
-            weighted_price /= total_executed;
-        }
-        
-        // 2. MISE A JOUR 
-        // 2.1. Ordre totalement exécuté
-        if (total_executed == order.quantity) {
-            // Debug
-            std::cout << "Ordre entrant complètement exécuté" << std::endl;
-            // Ajout de l'information dans l'historique des trades
-            std::cout << "DEBUG - Ordre entrant: quantity=" << order.quantity 
-              << ", total_executed=" << total_executed << std::endl;
-            Order executed_order = order;
-            executed_order.quantity = 0;  
-              
-            OrderResult result = createResult(executed_order, "EXECUTED", total_executed, weighted_price, counterparty_id);
-            std::cout << "DEBUG - Result créé: quantity=" << result.original_order.quantity 
-              << ", status=" << result.status << std::endl;
-            historic_trades.push_back(result);
-        } 
-        // 2.2. Ordre partiellement exécuté
-        else {
-            // Si ordre de marché -> affichage mais pas d'ajout du résidu dans le book
-            if (order.type == "MARKET") {
-                // Debug
-                std::cout << "ATTENTION: MARKET order partiellement exécuté" << std::endl;
-                // Puis on ajoute l'information, en précisant que l'ordre n'a été que partiellement exécuté
-                Order partial_order = order;
-                partial_order.quantity = order.quantity - total_executed;
-                OrderResult result = createResult(partial_order, "PARTIALLY_EXECUTED", total_executed, weighted_price, counterparty_id);
-                historic_trades.push_back(result);
-            } 
-            // Si ordre limite -> affichage + ajout de la quantité restante dans le book
-            else {
-                std::cout << "Ordre entrant partiellement exécuté - Résidu au carnet" << std::endl;
-
-                // Ajout dans le book : on crée une instance d'un ordre, on calcule la quantité et on ajoute dans le book
-                Order residual_order = order;
-                residual_order.quantity = order.quantity - total_executed;
-                addToBook(residual_order);
-                order_map[order.order_id] = residual_order;
-                
-                // Ajout dans l'historique
-                OrderResult result = createResult(order, "PARTIALLY_EXECUTED", total_executed, weighted_price, counterparty_id);
-                historic_trades.push_back(result);
+            
+            // On détermine le status de l'ordre pour ce match pour ensuite l'afficher
+            std::string status;
+            if (i == matches.size() - 1) {  // Dernier match
+                if (remaining_order_qty == 0) {
+                    status = "EXECUTED";  
+                } else {
+                    status = "PARTIALLY_EXECUTED";  
+                }
+            } else {
+                status = "PARTIALLY_EXECUTED";  // Pas le dernier match, donc forcément partiel
             }
+            
+            // Dans les résultats on aura une ligne par trade
+            Order match_order = order;
+            if (status == "EXECUTED") {
+                match_order.quantity = 0;  
+            } else {
+                match_order.quantity = remaining_order_qty;  
+            }
+            
+            OrderResult result = createResult(match_order, status, trade.quantity, trade.price, counterparty_id);
+            historic_trades.push_back(result);
         }
         
-        // 3. Affichage (nouvel ordre d'abord, ordres impactés ensuite)
+        // Si l'ordre n'est pas complètement exécuté et c'est un ordre limite, on ajoute le résidu au carnet
+        if (remaining_order_qty > 0 && order.type == "LIMIT") {
+            std::cout << "Résidu de " << remaining_order_qty << " ajouté au carnet" << std::endl;
+            Order residual_order = order;
+            residual_order.quantity = remaining_order_qty;
+            addToBook(residual_order);
+            order_map[order.order_id] = residual_order;
+        }
+        
+        // Affichage des ordres impactés 
         for (const OrderResult& impacted : pending_impacted_orders) {
             historic_trades.push_back(impacted);
         }
@@ -179,8 +216,9 @@ void MatchingEngine::handleNew(const Order& order) {
 //      (Comme on modifie l'ordre, il perd sa priorité temporelle) 
 void MatchingEngine::handleModify(const Order& order) {
     // ################################################################################################
-    // Fonction qui gère l'action MODIFY
+    // Fonction qui gère l'action MODIFY avec gestion complexe des quantités
     // Concrètement, on récupère l'ordre et on regarde s'il correspond bien à un ordre déjà existant,
+    // On calcule la nouvelle quantité par rapport à l'ordre INITIAL et à l'ordre ACTUEL
     // Puis on modifie l'ordre existant : on supprime l'ancien ordre du book en le remplaçant par le nouveau,
     // Mais on garde les deux éléments dans l'historique.
     // ################################################################################################
@@ -200,8 +238,66 @@ void MatchingEngine::handleModify(const Order& order) {
         return;
     }
     
-    // 2. Ordre trouvé
-    std::cout << "Ordre trouvé - Suppression du carnet et retraitement" << std::endl;
+    // 2. Récupération de la quantité initiale
+    int initial_quantity = -1;
+    for (const OrderResult& result : historic_trades) {
+        if (result.original_order.order_id == order.order_id && result.original_order.action == "NEW") {
+            // Pour récupérer la quantité initiale, on doit regarder :
+            // - Si PENDING : la quantité affichée est la quantité initiale
+            // - Si EXECUTED/PARTIALLY_EXECUTED : quantité affichée + quantité exécutée = quantité initiale
+            if (result.status == "PENDING") {
+                initial_quantity = result.original_order.quantity;
+            } else if (result.status == "EXECUTED") {
+                initial_quantity = result.original_order.quantity + result.executed_quantity;
+            } else if (result.status == "PARTIALLY_EXECUTED") {
+                initial_quantity = result.original_order.quantity + result.executed_quantity;
+            }
+            break;
+        }
+    }
+    
+    if (initial_quantity == -1) {
+        std::cout << "ERREUR: Impossible de trouver la quantité initiale pour l'ordre ID " << order.order_id << std::endl;
+        OrderResult result = createResult(order, "REJECTED");
+        historic_trades.push_back(result);
+        return;
+    }
+    
+    // 3. Calcul de la nouvelle quantité
+    // Concrètement, nvlle qté = qté_restante - (qté_initiale - qté_modifiée)
+    // Donc si qté_initiale = 100, qté_restante = 50 et qté_modifiée = 70, qté_new = 20
+    // Si qté_initiale = 100, qté_restante = 50 et qté_modifiée = 130, qté_new = 80
+    // Si qté_initiale = 100, qté_restante = 50 et qté_modifiée = 40, qté_new = 0
+    int current_quantity = it->second.quantity; 
+    int reduction = initial_quantity - order.quantity;  
+    int new_quantity = current_quantity - reduction;    
+    
+    // 4. Gestion des cas limites
+    if (new_quantity <= 0) {
+        std::cout << "MODIFY résulte en quantité <= 0 - Ordre considéré comme complètement exécuté" << std::endl;
+        
+        // On supprime l'ordre du carnet
+        bool removed = removeFromBook(order.order_id, it->second.side);
+        if (removed) {
+            // On crée un résultat EXECUTED avec la quantité restante comme quantité exécutée
+            Order executed_order = order;
+            executed_order.quantity = 0;
+            
+            OrderResult result = createResult(executed_order, "EXECUTED", current_quantity, it->second.price, 0);
+            historic_trades.push_back(result);
+            
+            // Suppression de la map
+            order_map.erase(it);
+        } else {
+            std::cout << "ERREUR: Impossible de supprimer l'ordre du carnet" << std::endl;
+            OrderResult result = createResult(order, "REJECTED");
+            historic_trades.push_back(result);
+        }
+        return;
+    }
+    
+    // 5. Ordre trouvé avec quantité valide
+    std::cout << "Ordre trouvé - Suppression du carnet et retraitement avec nouvelle quantité: " << new_quantity << std::endl;
     
     // On supprime l'ancien ordre du carnet
     bool removed = removeFromBook(order.order_id, it->second.side);
@@ -214,12 +310,9 @@ void MatchingEngine::handleModify(const Order& order) {
         return;
     }
     
-    // On récupère les caractéristiques en faisant attention à 2 éléments : 
-    // - On récupère bien la quantité restante de l'ordre s'il a déjà été partiellement exécuté
-    // - On modifie le timestamp (perte de priorité temporelle)
+    // On récupère les caractéristiques nouvelles
     Order modified_order = order;
-    // La structure map stocke une paire (int first, Order second). On récupère la quantité de l'ordre correspondant à l'ID
-    modified_order.quantity = it->second.quantity;  
+    modified_order.quantity = new_quantity;      
     // On supprime de la map l'ancien ordre
     order_map.erase(it);
     
