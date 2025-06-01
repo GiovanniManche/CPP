@@ -81,10 +81,13 @@ private:
     // Timestamp actuel pour les modifications
     long long current_timestamp;
 
+    // Historique des trades
+    std::vector<OrderResult> historic_trades;
+
 public:
 
-    // Historique des trades (output final)
-    std::vector<OrderResult> historic_trades;
+    // Getter pour l'Historique des trades (output final)
+    std::vector<OrderResult> getTradeHistoric(){return historic_trades;}
 
     // Constructeur
     MatchingEngine();

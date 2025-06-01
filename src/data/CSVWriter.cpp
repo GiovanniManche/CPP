@@ -29,11 +29,11 @@ std::string CsvWriter::OrderToString(OrderResult order_result){
                         order.side + "," + 
                         order.type + "," + 
                         std::to_string(order.quantity) + "," +
-                        std::to_string(order.price) + "," + 
+                        std::to_string(std::floor((order.price * 100 + .5))/100) + "," + // Pour arrondir à deux décimales
                         order.action + "," + 
                         order_result.status + "," +
                         std::to_string(order_result.executed_quantity) + "," + 
-                        std::to_string(order_result.execution_price) + "," + 
+                        std::to_string(std::floor((order_result.execution_price * 100 + .5))/100) + "," + // Pour arrondir à 2 décimales 
                         std::to_string(order_result.counterparty_id); 
 
     // Récupération de l'output
