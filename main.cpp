@@ -7,7 +7,7 @@
 
 int main() {
     // Chargement des ordres
-    CsvReader csvReader("input_with_errors.csv");
+    CsvReader csvReader("input_test_all_error.csv");
     csvReader.init();
     csvReader.Display();
     

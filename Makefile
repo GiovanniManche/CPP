@@ -32,6 +32,8 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
 $(TEST_TARGET): directories $(TEST_OBJS)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ $(TEST_OBJS) $(TEST_DIR)/MatchingEngine/testsMatchingEngine.cpp
 
+
+
 test: $(TEST_TARGET)
 	./$(TEST_TARGET)
 

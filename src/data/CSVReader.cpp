@@ -92,31 +92,49 @@ void CsvReader::Display(){
 
 // Méthode permettant de tester le contenu d'un ordre
 Order CsvReader::testOrder(std::vector<std::string> row){
-    
-    // Création d'un ordre
-    Order order; 
-
-    // Réalisation d'un ensemble de test sur les éléments des ordres
+   
+    Order order;
+    bool hasError = false;
+    bool hasErrorTS = false;
+ 
     try{
-
         // Récupération des paramètres
         order.timestamp = testTimestamp(row[0]);
-        order.order_id = testId(row[1]);         
+ 
+    }catch(std::runtime_error& error_ts){
+        hasErrorTS = true;
+        hasError = true;
+        order.timestamp = 0;
+    }
+
+    try{
+        order.order_id = testId(row[1]);        
         order.instrument = row[2];
         order.side = testSide(row[3]);
         order.type = testType(row[4]);
         order.quantity = testQuantity(row[5]);
         order.price = testPrice(row[6], row[4]);            
         order.action = testAction(row[7]);
-
-    // En cas de runtime error, on modifie le type de l'ordre pour le rejeter automatiquement par la suite
-    // sans arrêter la matching engine
     }catch(std::runtime_error& error){
-        order.type = "BAD_INPUT";
+        hasError = true;
     }
+   
+    // Si erreur, modification de l'ordre avec un type BAD_INPUT pour le rejeter automatiquement par la suite
+    if (hasError) {
+        if(hasErrorTS == false){
+            order.timestamp = testTimestamp(row[0]);
+        }
+        order.order_id = 0;
+        order.instrument = row[2];
+        order.side = row[3];
+        order.type = "BAD_INPUT";  
+        order.quantity = 0;  
+        order.price = 0;    
+        order.action = row[7];
+    }
+   
     return(order);
 }
-
 // Méthode permettant de tester la récupération d'un timestamp
 long long CsvReader::testTimestamp(std::string rowValue){
 
@@ -126,6 +144,8 @@ long long CsvReader::testTimestamp(std::string rowValue){
         timestamp = std::stoll(rowValue);
     }catch (long long error){
         std::cout << error << std::endl;
+        throw std::runtime_error("Problème dans la conversion du timestamp");
+    }catch(std::invalid_argument error){
         throw std::runtime_error("Problème dans la conversion du timestamp");
     }
 
@@ -147,6 +167,8 @@ int CsvReader::testId(std::string rowValue){
         id = std::stoi(rowValue);
     }catch(int error){
         std::cout << error << std::endl;
+        throw std::runtime_error("Problème sur la valeur de l'ID");
+    }catch(std::invalid_argument error){
         throw std::runtime_error("Problème dans la conversion de l'ID");
     }
 
@@ -197,7 +219,9 @@ int CsvReader::testQuantity(std::string rowValue){
         quantity = std::stoi(rowValue);
     }catch(int error){
         std::cout << rowValue << std::endl;
-        std::runtime_error("Problème dans la conversion de la quantité");
+        throw std::runtime_error("Problème dans la conversion de la quantité");
+    }catch(std::invalid_argument error){
+        throw std::runtime_error("Problème dans la conversion de la quantité");
     }
 
     // Si la conversion a bien eu lieu, vérification qu'elle est positive
@@ -225,6 +249,8 @@ float CsvReader::testPrice(std::string rowValue, std::string orderType){
         }catch(float error){
             std::cout << error << std::endl;
             throw std::runtime_error("Problème dans la conversion du prix pour un ordre limite");
+        }catch(std::invalid_argument error){
+            throw std::runtime_error("Problème dans la conversion du prix d'un ordre");
         }
 
         // Deuxième check : prix  > 0
