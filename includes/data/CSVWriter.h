@@ -24,5 +24,6 @@ public :
 
 private:
     std::string filename; 
+    std::string formatPrice(float price);
 };
 #endif

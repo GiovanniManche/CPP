@@ -70,6 +70,15 @@ std::vector<OrderResult> MatchingEngine::processAllOrders(const std::vector<Orde
         // On récupère le nouvel ordre depuis le vecteur trié
         Order current_order = sorted_orders[i];
         
+        // ################################################################################################
+        // VÉRIFICATION BAD_INPUT 
+        // ################################################################################################
+        if (current_order.type == "BAD_INPUT") {
+            std::cout << "ERREUR: Type BAD_INPUT détecté pour l'ordre ID " << current_order.order_id << " - Ordre rejeté immédiatement" << std::endl;
+            OrderResult result = createResult(current_order, "REJECTED");
+            historic_trades.push_back(result);
+            continue;  // On passe à l'ordre suivant sans traiter celui-ci
+        }
         // Debug
         std::cout << "\n--- Traitement ordre " << (i+1) << "/" << sorted_orders.size() << " ---" << std::endl;
         std::cout << "ID: " << current_order.order_id << " | Action: " << current_order.action 
@@ -104,7 +113,7 @@ void MatchingEngine::handleNew(const Order& order) {
     // Concrètement, on récupère l'ordre et on regarde s'il peut être matché avec un / des ordres opposés,
     // Pour chaque match individuel, on génère une ligne dans l'historique
     // Puis si besoin, on ajoute l'ordre (avec quantité et état mis à jour) dans les books BUY et SELL.
-    // On contrôle que l'ID n'existe pas déjà et que ce n'est pas un bad input
+    // On contrôle que l'ID n'existe pas déjà
     // ################################################################################################
     std::cout << "Action NEW - Tentative de matching..." << std::endl;
     
@@ -121,17 +130,6 @@ void MatchingEngine::handleNew(const Order& order) {
         historic_trades.push_back(result);
         return;
     }
-    
-    // ################################################################################################
-    // On contrôle que le type n'est pas "BAD_INPUT"
-    // ################################################################################################
-     if (order.type == "BAD_INPUT") {
-        std::cout << "ERREUR: Type BAD_INPUT détecté pour l'ordre ID " << order.order_id << " - Ordre rejeté" << std::endl;
-        OrderResult result = createResult(order, "REJECTED");
-        historic_trades.push_back(result);
-        return;
-    }
-
 
     // 1. MATCHING
     Order working_order = order;  // Copie pour modification des quantités

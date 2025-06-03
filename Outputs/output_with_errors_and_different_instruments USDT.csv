@@ -1,0 +1,2 @@
+timestamp,order_id,instrument,side,type,quantity,price,action,status,executed_quantity,execution_price,counterparty_id
+1617278400000000200,3,USDT,SELL,LIMIT,60,150.3,NEW,PENDING,0,0,0

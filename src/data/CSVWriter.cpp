@@ -1,5 +1,8 @@
 #include <iostream>
 #include <vector>
+#include <cmath>
+#include <sstream>  
+#include <iomanip>   
 #include "data/CSVWriter.h"
 
 // Constructeur et destructeur par défaut
@@ -16,6 +19,24 @@ CsvWriter::CsvWriter(std::string filename){
     CsvWriter::filename = filename;
 }
 
+std::string CsvWriter::formatPrice(float price) {
+    // Cas spécial pour 0
+    if (price == 0.0f) {
+        return "0";
+    }
+    
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(2) << price;
+    std::string str = oss.str();
+    
+    // Supprimer les zéros inutiles à la fin
+    str.erase(str.find_last_not_of('0') + 1, std::string::npos);
+    // Supprimer le point si pas de décimales (sauf pour 0.0)
+    str.erase(str.find_last_not_of('.') + 1, std::string::npos);
+    
+    return str;
+}
+
 // Méthode permettant de transformer un ordre en chaîne de caractère
 std::string CsvWriter::OrderToString(OrderResult order_result){
 
@@ -29,11 +50,11 @@ std::string CsvWriter::OrderToString(OrderResult order_result){
                         order.side + "," + 
                         order.type + "," + 
                         std::to_string(order.quantity) + "," +
-                        std::to_string(order.price) + "," + 
+                        formatPrice(order.price) + "," + // Pour arrondir à deux décimales
                         order.action + "," + 
                         order_result.status + "," +
                         std::to_string(order_result.executed_quantity) + "," + 
-                        std::to_string(order_result.execution_price) + "," + 
+                        formatPrice(order_result.execution_price) + "," + // Pour arrondir à 2 décimales 
                         std::to_string(order_result.counterparty_id); 
 
     // Récupération de l'output
@@ -47,6 +68,8 @@ void CsvWriter::WriteToCsv(std::vector<OrderResult> resOrders){
 
     // Modification du nom du fichier
     output_file.open(filename);
+
+    output_file << "timestamp,order_id,instrument,side,type,quantity,price,action,status,executed_quantity,execution_price,counterparty_id" << std::endl;
 
     // Boucle sur les les trades de l'historique
     for(u_long i = 0; i < resOrders.size(); i++){
