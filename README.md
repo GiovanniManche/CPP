@@ -32,6 +32,7 @@
   - [Structure du projet](#structure-du-projet)
   - [Classes principales](#classes-principales)
   - [Algorithme de matching](#algorithme-de-matching)
+- [Schéma récapitulatif](#schema-recapitulatif)
 
 ## Description
 Ce projet implémente un **matching engine**, au coeur du trading financier. Il traite les ordres d'achat et de vente selon les règles de priorité standard :
@@ -253,6 +254,8 @@ matching-engine/
    - Mise à jour du carnet et de l'historique
 3. **Gestion des exécutions partielles**
 4. **Logging détaillé** de chaque opération
----
+
+## Schéma récapitulatif
+
 Vous trouverez ci-dessous une vision schématisée du code (code couleur indiqué par le tableau).
 ![Console Output](docs/images/schema-explicatif.png)
