@@ -49,9 +49,7 @@ Ce matching engine supporte les opérations essentielles d'un carnet d'ordres av
 ### Actions disponibles
 - **NEW** : Ajout d'un nouvel ordre au carnet
 - **MODIFY** : Modification d'un ordre existant. Il est possible de modifier le prix et la quantité. Attention, la modification fait perdre la priorité temporelle qu'aurait eu l'ordre non modifié. Aussi, une modification de la quantité fonctionne selon la logique suivante si l'ordre a déjà été partiellement exécuté :
-$$
-\text{newQty} = \text{remainingQty} - (\text{initialQty} - \text{modifiedQty})  
-$$
+$$\text{newQty} = \text{remainingQty} - (\text{initialQty} - \text{modifiedQty})$$
 - Si la modification est d'une ampleur telle que la quantité deviendrait négative, l'ordre est simplement considéré comme exécuté et $\text{newQty} = 0$.
 
 - **CANCEL** : Annulation d'un ordre existant
