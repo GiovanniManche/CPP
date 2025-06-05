@@ -26,13 +26,15 @@
   - [Fichier de sortie (CSV)](#fichier-de-sortie-csv)
 - [Tests](#tests)
   - [Types de tests](#types-de-tests)
+    - [Tests unitaires](#tests-unitaires)
+    - [Tests de conformité avec des résultats connus](#tests-de-conformité-avec-des-résultats-connus)
+    - [Tests de performance](#tests-de-performance)
   - [Structure des tests](#structure-des-tests)
   - [Nettoyage](#nettoyage)
 - [Architecture](#architecture)
   - [Structure du projet](#structure-du-projet)
   - [Classes principales](#classes-principales)
   - [Algorithme de matching](#algorithme-de-matching)
-- [Schéma récapitulatif](#schema-recapitulatif)
 
 ## Description
 Ce projet implémente un **matching engine**, au coeur du trading financier. Il traite les ordres d'achat et de vente selon les règles de priorité standard :
@@ -50,7 +52,9 @@ Ce matching engine supporte les opérations essentielles d'un carnet d'ordres av
 ### Actions disponibles
 - **NEW** : Ajout d'un nouvel ordre au carnet
 - **MODIFY** : Modification d'un ordre existant. Il est possible de modifier le prix et la quantité. Attention, la modification fait perdre la priorité temporelle qu'aurait eu l'ordre non modifié. Aussi, une modification de la quantité fonctionne selon la logique suivante si l'ordre a déjà été partiellement exécuté :
-$$\text{newQty} = \text{remainingQty} - (\text{initialQty} - \text{modifiedQty})$$
+$$
+\text{newQty} = \text{remainingQty} - (\text{initialQty} - \text{modifiedQty})  
+$$
 - Si la modification est d'une ampleur telle que la quantité deviendrait négative, l'ordre est simplement considéré comme exécuté et $\text{newQty} = 0$.
 
 - **CANCEL** : Annulation d'un ordre existant
@@ -171,20 +175,50 @@ timestamp,order_id,instrument,side,type,quantity,price,action,status,executed_qu
 ## Tests
 
 ### Types de tests
-Nous avons à disposition une multitude de tests visant à mettre à l'épreuve la robustesse de notre matching engine et sa gestion des exceptions. On distingue trois principales catégories de tests :
+Nous avons à disposition une multitude de tests visant à mettre à l'épreuve la robustesse de notre matching engine et sa gestion des exceptions. On distingue trois principales catégories de tests.
+
+#### Tests unitaires
 - Tests unitaires de gestion des exceptions à la lecture du CSV : on vérifie que, pour chaque potentielle erreur de typage / valeur, l'ordre est bien transformé en un type BAD_INPUT avec valeurs nulles. L'exécutable associé est `test_csv_reader`
 - Tests unitaires de gestion des incohérences et exceptions dans le matching engine : on vérifie que les ordres labellisés BAD_INPUT sont automatiquement rejetés, que les ordres avec des IDs incohérents le sont aussi, et que les ordres modifiant la quantité ne la rendent jamais négative. L'exécutable associé est `test_matching_engine`
-- Tests de conformité avec des résultats connus : ces tests permettent de tester de manière globale le code. On crée des inputs simples de toute pièce dont on connaît l'output attendu, et nous vérifions que l'output généré par le code est conforme aux attentes. L'exécutable associé est `test_outputs` 
+
+#### Tests de conformité avec des résultats connus
+- Ces tests permettent de tester de manière globale le code. On crée des inputs simples de toute pièce dont on connaît l'output attendu, et nous vérifions que l'output généré par le code est conforme aux attentes. L'exécutable associé est `test_outputs` 
+
+#### Tests de performance
+Ils mesurent l'efficacité du matching engine via cinq métriques : 
+- le **temps d'exécution global** en secondes d'exécution (du CSVReader au CSVWriter),
+- le **débit**, c'est à dire le nombre d'ordres traités par seconde par le matching engine,
+- la **latence**, c'est à dire le temps moyen nécessaire pour traiter un ordre individuel (en microsecondes),
+- la **mémoire**, mesurée par la consommation RAM réelle du processus pendant l'exécution (mesure renvoyée : l'utilisation maximale).
+- la **scalabilité**, c'est-à-dire l'évolution de la performance avec un volume d'ordres croissant. Ce n'est pas une métrique *per se*, mais on peut comparer l'évolution des métriques précédentes avec des fichiers CSV contenant 10, 100, 1 000, 10 000 ou 100 000 ordres. Cela permet d'identifier la complexité algorithmique réelle.
+
+Avec les fichiers d'inputs proposés actuellement, nous obtenons les métriques suivantes :
+```
+===============================================================
+RÉSUMÉ COMPARATIF DES PERFORMANCES
+================================================================================
+Fichier                  Nb Ordres      Temps (s)      Ordres/sec     Latence (µs)  Mémoire (KB)
+--------------------------------------------------------------------------------------------------------------
+10_orders.csv            10             0.001          14225          70.30          2092
+100_orders.csv           100            0.005          20321          49.21          4008
+1000_orders.csv          1000           0.071          14046          71.19          4292
+10000_orders.csv         10000          0.693          14431          69.29          7276
+100000_orders.csv        100000         5.744          17408          57.44          17328
+--------------------------------------------------------------------------------------------------------------
+```
+Ces résultats témoignent d'une bonne scalabilité et d'une complexité quasi-linéaire $O(n)$ (en multipliant le nombre d'ordres par 10, le temps d'exécution est multiplié par environ 10)
+#### Lancement des tests
 
 Vous pouvez lancer tous les tests en même temps ou une batterie spécifique à la fois :
 ```bash
-# Pour lancer tous les tests : 
+# Pour lancer tous les tests (attention, les tests de performance ne sont PAS inclus): 
 make test_all
 
 # Pour lancer les tests portant sur une partie spécifique : 
 make test_matching_engine    # Tests unitaires du moteur
 make test_outputs           # Tests de conformité
 make test_csv_reader        # Tests du lecteur CSV
+make test_performance       # Tests de performance
 ```
 
 ### Structure des tests
@@ -254,8 +288,6 @@ matching-engine/
    - Mise à jour du carnet et de l'historique
 3. **Gestion des exécutions partielles**
 4. **Logging détaillé** de chaque opération
-
-## Schéma récapitulatif
-
+---
 Vous trouverez ci-dessous une vision schématisée du code (code couleur indiqué par le tableau).
 ![Console Output](docs/images/schema-explicatif.png)
