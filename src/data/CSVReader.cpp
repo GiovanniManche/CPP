@@ -2,7 +2,7 @@
 #include <sstream>
 #include <vector>
 #include "data/CSVReader.h"
-// Constructeur avec nom du fichier dans filename (correspond ensuite à l'attribut file_)
+// Constructeur avec nom du fichier dans filename
 CsvReader::CsvReader(std::string filename):file_(filename){
 }
 
@@ -17,9 +17,9 @@ CsvReader::~CsvReader() {
 }
 
 void CsvReader::init(){
-    // line contiendra chaque ligne du fichier, word chaque mot extrait de la ligne
+    // line contiendra chaque ligne du fichier, word contiendra chaque mot extrait de la ligne
     std::string line, word;
-    // row = vecteur qui contiendra les mots de la ligne (passage CSV -> C++)
+    // row sera le vecteur qui contiendra les mots de la ligne (passage CSV -> C++)
     std::vector<std::string> row;
     
     // On ignore la ligne de titre (le curseur au départ est nécessairement sur la première ligne)
@@ -62,16 +62,14 @@ void CsvReader::init(){
             it->second.push_back(order);
         // Sinon, on crée le couple clé/valeur
         }else{
-            std::cout << "Key not found" << std::endl;
+            std::cout << "Instrument non trouvé" << std::endl;
             // Etape 1 : création d'un vecteur pour stocker les ordres de l'actif
             std::vector<Order> orders_asset;
 
             // Etape 2 : création du couple clé/valeur
-            //map_orders_asset.insert({order.instrument, orders_asset});
             map_orders_asset[order.instrument] = orders_asset;
 
             // Etape 3 : Récupération de l'ordre
-            //it->second.push_back(order);
             map_orders_asset[order.instrument].push_back(order);
         }
     }
@@ -119,7 +117,7 @@ Order CsvReader::testOrder(std::vector<std::string> row){
         hasError = true;
     }
    
-    // Si erreur, modification de l'ordre avec un type BAD_INPUT pour le rejeter automatiquement par la suite
+    // En cas d'erreur, on modifie le type de l'ordre en BAD_INPUT pour le rejeter automatiquement par la suite
     if (hasError) {
         if(hasErrorTS == false){
             order.timestamp = testTimestamp(row[0]);
@@ -224,7 +222,7 @@ int CsvReader::testQuantity(std::string rowValue){
         throw std::runtime_error("Problème dans la conversion de la quantité");
     }
 
-    // Si la conversion a bien eu lieu, vérification qu'elle est positive
+    // Si la conversion a bien eu lieu, on vérifie qu'elle est positive
     if(quantity <= 0){
         std::cout << quantity << std::endl;
         throw std::runtime_error("La quantité ne peut pas être négative ou nulle");
