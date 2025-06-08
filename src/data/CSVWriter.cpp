@@ -29,9 +29,8 @@ std::string CsvWriter::formatPrice(float price) {
     oss << std::fixed << std::setprecision(2) << price;
     std::string str = oss.str();
     
-    // Supprimer les zéros inutiles à la fin
+    // On supprime les zéros inutiles et le point si pas de décimale
     str.erase(str.find_last_not_of('0') + 1, std::string::npos);
-    // Supprimer le point si pas de décimales (sauf pour 0.0)
     str.erase(str.find_last_not_of('.') + 1, std::string::npos);
     
     return str;
