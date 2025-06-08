@@ -13,7 +13,7 @@ public :
     CsvWriter();
     ~CsvWriter();
 
-    // Constructeur qui prend le nom d'un fichier en entrée et 
+    // Constructeur qui prend le nom d'un fichier en entrée
     CsvWriter(std::string filename);
 
     // Ecriture dans le fichier à partir des résultats du matching engine
