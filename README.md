@@ -1,139 +1,139 @@
-# Développement d'un Matching Engine en C++
+# Development of a Matching Engine in C++
 ![C++](https://img.shields.io/badge/C%2B%2B-17-blue)
 
-
 ## Introduction
-**Auteurs** : Giovanni MANCHE, Timothée DANGLETERRE, Antonin DEVALLAND \
-**Date** : Juin 2025 \
-**Objet** : Réalisation d'un moteur de matching performant et robuste aux erreurs en C++ pour simuler l'exécution d'ordres selon les règles de priorité standards.
+**Authors**: Giovanni MANCHE, Timothée DANGLETERRE, Antonin DEVALLAND  
+**Date**: June 2025  
+**Purpose**: Implementation of a high-performance and error-robust matching engine in C++ to simulate order execution according to standard priority rules.
 
-## Table des matières
+## Table of Contents
 
 - [Description](#description)
-- [Fonctionnalités](#fonctionnalités)
-  - [Types d'ordres supportés](#types-dordres-supportés)
-  - [Actions disponibles](#actions-disponibles)
-- [Fonctionnement du matching engine](#fonctionnement-du-matching-engine)
-  - [Étapes](#étapes)
-  - [Fonctionnalités principales](#fonctionnalités-principales)
-  - [Gestion des erreurs robustes](#gestion-des-erreurs-robustes)
+- [Features](#features)
+  - [Supported Order Types](#supported-order-types)
+  - [Available Actions](#available-actions)
+- [Matching Engine Operation](#matching-engine-operation)
+  - [Steps](#steps)
+  - [Main Features](#main-features)
+  - [Robust Error Handling](#robust-error-handling)
 - [Installation](#installation)
-  - [Prérequis](#prérequis)
+  - [Prerequisites](#prerequisites)
   - [Compilation](#compilation)
-- [Utilisation](#utilisation)
-- [Format des fichiers](#format-des-fichiers)
-  - [Fichier d'entrée (CSV)](#fichier-dentrée-csv)
-  - [Fichier de sortie (CSV)](#fichier-de-sortie-csv)
+- [Usage](#usage)
+- [File Formats](#file-formats)
+  - [Input File (CSV)](#input-file-csv)
+  - [Output File (CSV)](#output-file-csv)
 - [Tests](#tests)
-  - [Types de tests](#types-de-tests)
-    - [Tests unitaires](#tests-unitaires)
-    - [Tests de conformité avec des résultats connus](#tests-de-conformité-avec-des-résultats-connus)
-    - [Tests de performance](#tests-de-performance)
-  - [Structure des tests](#structure-des-tests)
-  - [Nettoyage](#nettoyage)
+  - [Test Types](#test-types)
+    - [Unit Tests](#unit-tests)
+    - [Compliance Tests with Known Results](#compliance-tests-with-known-results)
+    - [Performance Tests](#performance-tests)
+  - [Test Structure](#test-structure)
+  - [Cleanup](#cleanup)
 - [Architecture](#architecture)
-  - [Structure du projet](#structure-du-projet)
-  - [Classes principales](#classes-principales)
-  - [Algorithme de matching](#algorithme-de-matching)
+  - [Project Structure](#project-structure)
+  - [Main Classes](#main-classes)
+  - [Matching Algorithm](#matching-algorithm)
 
 ## Description
-Ce projet implémente un **matching engine**, au coeur du trading financier. Il traite les ordres d'achat et de vente selon les règles de priorité standard :
-- **Priorité du prix** : Les meilleurs prix sont exécutés en premier (les meilleurs ordres d'achat sont ceux dont le prix est le plus élevé, inversement pour les ordres de vente)
-- **Priorité temporelle** : À prix égal, les ordres sont traités selon le principe *FIFO (First In, First Out)*
+This project implements a **matching engine**, at the heart of financial trading. It processes buy and sell orders according to standard priority rules:
+- **Price Priority**: The best prices are executed first (the best buy orders are those with the highest price, inversely for sell orders)
+- **Time Priority**: At equal prices, orders are processed according to the *FIFO (First In, First Out)* principle
 
-Ce matching engine supporte les opérations essentielles d'un carnet d'ordres avec gestion robuste complète des erreurs et validation des données.
+This matching engine supports essential order book operations with complete robust error handling and data validation.
 
-## Fonctionnalités
+## Features
 
-### Types d'ordres supportés
-- **LIMIT** : Ordres avec prix limite spécifique. Ces ordres sont maintenus dans le carnet tant qu'ils ne sont pas entièrement exécutés ou supprimés.
-- **MARKET** : Ordres au prix du marché (exécution immédiate, ou rejet immédiat). Ces ordres disparaissent du carnet après exécution partielle. 
+### Supported Order Types
+- **LIMIT**: Orders with a specific limit price. These orders remain in the order book until they are fully executed or deleted.
+- **MARKET**: Market price orders (immediate execution or immediate rejection). These orders disappear from the order book after partial execution.
 
-### Actions disponibles
-- **NEW** : Ajout d'un nouvel ordre au carnet
-- **MODIFY** : Modification d'un ordre existant. Il est possible de modifier le prix et la quantité. Attention, la modification fait perdre la priorité temporelle qu'aurait eu l'ordre non modifié. Aussi, une modification de la quantité fonctionne selon la logique suivante si l'ordre a déjà été partiellement exécuté :
+### Available Actions
+- **NEW**: Add a new order to the order book
+- **MODIFY**: Modify an existing order. It is possible to modify the price and quantity. Note that modification causes loss of the time priority that the unmodified order would have had. Also, a quantity modification works according to the following logic if the order has already been partially executed:
 $$
 \text{newQty} = \text{remainingQty} - (\text{initialQty} - \text{modifiedQty})  
 $$
-- Si la modification est d'une ampleur telle que la quantité deviendrait négative, l'ordre est simplement considéré comme exécuté et $\text{newQty} = 0$.
+- If the modification is of such magnitude that the quantity would become negative, the order is simply considered executed and $\text{newQty} = 0$.
 
-- **CANCEL** : Annulation d'un ordre existant
+- **CANCEL**: Cancel an existing order
 
-## Fonctionnement du matching engine 
-### Étapes
-Le matching engine repose sur 3 étapes essentielles : 
-- Lecture d'un CSV contenant les ordres à exécuter,
-- Récupération des ordres un à un et recherche de matching possibles, et exécution des actions demandées si l'ordre est de type MODIFY ou CANCEL,
-- Une fois tous les ordres lus, renvoi au format CSV 
-Les carnets d'ordre sont maintenus à jour dynamiquement à l'aide d'objets `map` et `priority_queue`, tandis que l'historique des opérations est actualisé à chaque étape.
+## Matching Engine Operation
+### Steps
+The matching engine relies on 3 essential steps:
+- Reading a CSV containing the orders to be executed,
+- Retrieving orders one by one and searching for possible matches, and executing requested actions if the order is of type MODIFY or CANCEL,
+- Once all orders are read, return in CSV format
 
-### Fonctionnalités principales
-- Validation complète des données d'entrée
-- Gestion des erreurs avec type `BAD_INPUT`
-- Exécutions partielles et complètes
-- Traitement multi-instruments (produit des outputs différents pour chaque instrument)
-- Logs détaillés pour debugging
-- Format de sortie standardisé
+Order books are maintained dynamically using `map` and `priority_queue` objects, while the operation history is updated at each step.
 
-### Gestion des erreurs robustes
-Si le format des données CSV est erroné (valeurs négatives, mauvais type,...), alors : 
-- le type sera fixé à BAD_INPUT, les valeurs chiffrées à 0 
-- le matching engine rejettera automatiquement ce type d'ordre (donc les modifications des valeurs n'ont pas d'effet),
-- dans l'historique des opérations, l'ordre sera indiqué de type "BAD_INPUT" et d'état "REJECTED".
+### Main Features
+- Complete input data validation
+- Error handling with `BAD_INPUT` type
+- Partial and complete executions
+- Multi-instrument processing (produces different outputs for each instrument)
+- Detailed logs for debugging
+- Standardized output format
 
-Cette méthode permet de ne pas forcer l'arrêt du matching engine en cas d'erreur localisée et inattendue, tout en ne faussant pas l'exécution. 
+### Robust Error Handling
+If the CSV data format is incorrect (negative values, wrong type, etc.), then:
+- the type will be set to BAD_INPUT, numerical values to 0
+- the matching engine will automatically reject this type of order (so value modifications have no effect),
+- in the operation history, the order will be indicated as type "BAD_INPUT" and status "REJECTED".
 
-Le matching engine gère également les cas où : 
-- l'ID d'un ordre CANCEL ou MODIFY n'existe pas encore,
-- l'ID d'un ordre NEW existe déjà,
-- la modification de la quantité avec un ordre MODIFY aboutit à une quantité négative,
-- un ordre au marché ne trouve aucune contrepartie (carnet d'ordres opposés vide).
+This method allows the matching engine not to be forced to stop in case of localized and unexpected error, while not distorting execution.
+
+The matching engine also handles cases where:
+- the ID of a CANCEL or MODIFY order does not yet exist,
+- the ID of a NEW order already exists,
+- quantity modification with a MODIFY order results in a negative quantity,
+- a market order finds no counterparty (opposite order book empty).
 
 ## Installation
 
-### Prérequis
-- **Compilateur** : g++ avec support C++17 ou supérieur
-- **Build system** : make
-- **Système** : Linux/macOS
+### Prerequisites
+- **Compiler**: g++ with C++17 support or higher
+- **Build system**: make
+- **System**: Linux/macOS
 
 ### Compilation
-Le nom de l'exécutable du matching engine est `order_book`
+The matching engine executable name is `order_book`
 ```bash
-# Pour cloner le projet depuis Github
+# To clone the project from Github
 git clone <repository-url>
 cd matching-engine-cpp
 
-# Compilation complète
+# Complete compilation
 make clean ; make all 
 
-# Vérification (affichage des loggers)
+# Verification (display loggers)
 ls build/order_book
 ```
 
-## Utilisation
+## Usage
 
-### Lancement basique
+### Basic Launch
 ```bash
-# Lancement avec fichier par défaut
+# Launch with default file
 make run
 
-# Ou directement
+# Or directly
 ./build/order_book
 ```
 
-### Modifier le fichier d'entrée
-La modification du fichier d'input se fait depuis le fichier `main.cpp` :
+### Modify Input File
+Input file modification is done from the `main.cpp` file:
 ```cpp
 int main() {
-    // Chargement des ordres
-    CsvReader csvReader("Inputs/input_with_market_orders.csv");  // <- Vous pouvez modifier ici !
+    // Load orders
+    CsvReader csvReader("Inputs/input_with_market_orders.csv");  // <- You can modify here!
     csvReader.init();
     csvReader.Display();
 ```
 
-## Format des fichiers
+## File Formats
 
-### Fichier d'entrée (CSV)
+### Input File (CSV)
 ```csv
 timestamp,order_id,instrument,side,type,quantity,price,action
 1617278400000000000,1,AAPL,BUY,LIMIT,100,150.25,NEW
@@ -142,19 +142,19 @@ timestamp,order_id,instrument,side,type,quantity,price,action
 1617278400000000300,2,AAPL,SELL,LIMIT,50,150.25,CANCEL
 ```
 
-#### Colonnes requises
-| Colonne | Type | Description |
+#### Required Columns
+| Column | Type | Description |
 |---------|------|-------------|
-| `timestamp` | long long | Horodatage en nanosecondes (époque Unix) |
-| `order_id` | int | Identifiant unique de l'ordre |
-| `instrument` | string | Code de l'instrument (ex: "AAPL", "EURUSD") |
-| `side` | string | Côté de l'ordre (`BUY` ou `SELL`) |
-| `type` | string | Type d'ordre (`LIMIT` ou `MARKET`) |
-| `quantity` | int | Quantité à acheter/vendre (>0) |
-| `price` | float | Prix limite (pour LIMIT), 0 pour MARKET |
+| `timestamp` | long long | Timestamp in nanoseconds (Unix epoch) |
+| `order_id` | int | Unique order identifier |
+| `instrument` | string | Instrument code (e.g., "AAPL", "EURUSD") |
+| `side` | string | Order side (`BUY` or `SELL`) |
+| `type` | string | Order type (`LIMIT` or `MARKET`) |
+| `quantity` | int | Quantity to buy/sell (>0) |
+| `price` | float | Limit price (for LIMIT), 0 for MARKET |
 | `action` | string | Action (`NEW`, `MODIFY`, `CANCEL`) |
 
-### Fichier de sortie (CSV)
+### Output File (CSV)
 ```csv
 timestamp,order_id,instrument,side,type,quantity,price,action,status,executed_quantity,execution_price,counterparty_id
 1617278400000000000,1,AAPL,BUY,LIMIT,100,150.25,NEW,PENDING,0,0,0
@@ -164,40 +164,40 @@ timestamp,order_id,instrument,side,type,quantity,price,action,status,executed_qu
 1617278400000000300,2,AAPL,SELL,LIMIT,50,150.25,CANCEL,REJECTED,0,0,0
 ```
 
-#### Colonnes supplémentaires de sortie
-| Colonne | Description |
+#### Additional Output Columns
+| Column | Description |
 |---------|-------------|
 | `status` | `EXECUTED`, `PARTIALLY_EXECUTED`, `PENDING`, `CANCELED`, `REJECTED` |
-| `executed_quantity` | Quantité effectivement exécutée |
-| `execution_price` | Prix d'exécution réel |
-| `counterparty_id` | ID de l'ordre contrepartie lors d'un match |
+| `executed_quantity` | Actually executed quantity |
+| `execution_price` | Actual execution price |
+| `counterparty_id` | ID of the counterparty order during a match |
 
 ## Tests
 
-### Types de tests
-Nous avons à disposition une multitude de tests visant à mettre à l'épreuve la robustesse de notre matching engine et sa gestion des exceptions. On distingue trois principales catégories de tests.
+### Test Types
+We have a multitude of tests available aimed at testing the robustness of our matching engine and its exception handling. We distinguish three main categories of tests.
 
-#### Tests unitaires
-- Tests unitaires de gestion des exceptions à la lecture du CSV : on vérifie que, pour chaque potentielle erreur de typage / valeur, l'ordre est bien transformé en un type BAD_INPUT avec valeurs nulles. L'exécutable associé est `test_csv_reader`
-- Tests unitaires de gestion des incohérences et exceptions dans le matching engine : on vérifie que les ordres labellisés BAD_INPUT sont automatiquement rejetés, que les ordres avec des IDs incohérents le sont aussi, et que les ordres modifiant la quantité ne la rendent jamais négative. L'exécutable associé est `test_matching_engine`
+#### Unit Tests
+- Unit tests for exception handling when reading CSV: we verify that, for each potential typing/value error, the order is properly transformed into a BAD_INPUT type with null values. The associated executable is `test_csv_reader`
+- Unit tests for handling inconsistencies and exceptions in the matching engine: we verify that orders labeled BAD_INPUT are automatically rejected, that orders with inconsistent IDs are also rejected, and that orders modifying quantity never make it negative. The associated executable is `test_matching_engine`
 
-#### Tests de conformité avec des résultats connus
-- Ces tests permettent de tester de manière globale le code. On crée des inputs simples de toute pièce dont on connaît l'output attendu, et nous vérifions que l'output généré par le code est conforme aux attentes. L'exécutable associé est `test_outputs` 
+#### Compliance Tests with Known Results
+- These tests allow global code testing. We create simple inputs from scratch whose expected output is known, and we verify that the output generated by the code conforms to expectations. The associated executable is `test_outputs`
 
-#### Tests de performance
-Ils mesurent l'efficacité du matching engine via cinq métriques : 
-- le **temps d'exécution global** en secondes d'exécution (du CSVReader au CSVWriter),
-- le **débit**, c'est à dire le nombre d'ordres traités par seconde par le matching engine,
-- la **latence**, c'est à dire le temps moyen nécessaire pour traiter un ordre individuel (en microsecondes),
-- la **mémoire**, mesurée par la consommation RAM réelle du processus pendant l'exécution (mesure renvoyée : l'utilisation maximale).
-- la **scalabilité**, c'est-à-dire l'évolution de la performance avec un volume d'ordres croissant. Ce n'est pas une métrique *per se*, mais on peut comparer l'évolution des métriques précédentes avec des fichiers CSV contenant 10, 100, 1 000, 10 000 ou 100 000 ordres. Cela permet d'identifier la complexité algorithmique réelle.
+#### Performance Tests
+They measure matching engine efficiency via five metrics:
+- **overall execution time** in seconds (from CSVReader to CSVWriter),
+- **throughput**, i.e., the number of orders processed per second by the matching engine,
+- **latency**, i.e., the average time required to process an individual order (in microseconds),
+- **memory**, measured by the actual RAM consumption of the process during execution (returned measure: maximum usage).
+- **scalability**, i.e., performance evolution with increasing order volume. This is not a metric *per se*, but we can compare the evolution of previous metrics with CSV files containing 10, 100, 1,000, 10,000, or 100,000 orders. This allows identification of real algorithmic complexity.
 
-Avec les fichiers d'inputs proposés actuellement, nous obtenons les métriques suivantes :
+With the currently proposed input files, we obtain the following metrics:
 ```
 ===============================================================
-RÉSUMÉ COMPARATIF DES PERFORMANCES
+COMPARATIVE PERFORMANCE SUMMARY
 ================================================================================
-Fichier                  Nb Ordres      Temps (s)      Ordres/sec     Latence (µs)  Mémoire (KB)
+File                     Nb Orders      Time (s)       Orders/sec     Latency (µs)  Memory (KB)
 --------------------------------------------------------------------------------------------------------------
 10_orders.csv            10             0.001          14225          70.30          2092
 100_orders.csv           100            0.005          20321          49.21          4008
@@ -206,88 +206,90 @@ Fichier                  Nb Ordres      Temps (s)      Ordres/sec     Latence (�
 100000_orders.csv        100000         5.744          17408          57.44          17328
 --------------------------------------------------------------------------------------------------------------
 ```
-Ces résultats témoignent d'une bonne scalabilité et d'une complexité quasi-linéaire $O(n)$ (en multipliant le nombre d'ordres par 10, le temps d'exécution est multiplié par environ 10)
-#### Lancement des tests
+These results demonstrate good scalability and quasi-linear complexity $O(n)$ (by multiplying the number of orders by 10, execution time is multiplied by approximately 10)
 
-Vous pouvez lancer tous les tests en même temps ou une batterie spécifique à la fois :
+#### Running Tests
+
+You can run all tests at once or a specific battery at a time:
 ```bash
-# Pour lancer tous les tests (attention, les tests de performance ne sont PAS inclus): 
+# To run all tests (note: performance tests are NOT included): 
 make test_all
 
-# Pour lancer les tests portant sur une partie spécifique : 
-make test_matching_engine    # Tests unitaires du moteur
-make test_outputs           # Tests de conformité
-make test_csv_reader        # Tests du lecteur CSV
-make test_performance       # Tests de performance
+# To run tests for a specific part: 
+make test_matching_engine    # Engine unit tests
+make test_outputs           # Compliance tests
+make test_csv_reader        # CSV reader tests
+make test_performance       # Performance tests
 ```
 
-### Structure des tests
+### Test Structure
 ```
 tests/
-├── MatchingEngine/         # Tests unitaires du moteur
-├── SimpleOutput/           # Tests de concordance
-│   ├── Inputs/            # Fichiers de test
-│   ├── ExpectedOutputs/   # Résultats attendus
-│   └── GeneratedOutputs/  # Résultats générés
-└── CSVReader/             # Tests du lecteur CSV
+├── MatchingEngine/         # Engine unit tests
+├── SimpleOutput/           # Compliance tests
+│   ├── Inputs/            # Test files
+│   ├── ExpectedOutputs/   # Expected results
+│   └── GeneratedOutputs/  # Generated results
+└── CSVReader/             # CSV reader tests
 ```
 
-### Nettoyage
+### Cleanup
 ```bash
 make clean    
 ```
 
 ## Architecture
 
-### Structure du projet
+### Project Structure
 ```
 matching-engine/
 ├── src/
 │   ├── core/
-│   │   └── MatchingEngine.cpp    # Logique principale du matching
+│   │   └── MatchingEngine.cpp    # Main matching logic
 │   └── data/
-│       ├── CSVReader.cpp         # Lecture et validation CSV
-│       └── CSVWriter.cpp         # Écriture des résultats
+│       ├── CSVReader.cpp         # CSV reading and validation
+│       └── CSVWriter.cpp         # Result writing
 ├── includes/
 │   ├── core/
-│   │   └── MatchingEngine.h      # Interface du moteur
+│   │   └── MatchingEngine.h      # Engine interface
 │   └── data/
 │       ├── CSVReader.h
 │       └── CSVWriter.h
-├── tests/                        # Tests unitaires et d'intégration
-├── build/                        # Fichiers compilés
-├── Inputs/                       # Fichiers CSV d'entrée pour la main
-├── Outputs/                      # Fichiers CSV en sortie du code
-├── docs/                         # Fichiers et images annexes
-├── main.cpp                      # Point d'entrée principal
+├── tests/                        # Unit and integration tests
+├── build/                        # Compiled files
+├── Inputs/                       # Input CSV files for main
+├── Outputs/                      # CSV output files from code
+├── docs/                         # Appendix files and images
+├── main.cpp                      # Main entry point
 └── Makefile                      
 ```
 
-### Classes principales
+### Main Classes
 
 #### `MatchingEngine`
-- **Responsabilité** : Traitement des ordres selon les règles de marché. C'est le coeur du code.
-- **Algorithme** : Priority queue pour gestion FIFO avec priorité prix
-- **Complexité** : O(log n) pour insertion, O(1) pour meilleur prix
+- **Responsibility**: Order processing according to market rules. This is the core of the code.
+- **Algorithm**: Priority queue for FIFO management with price priority
+- **Complexity**: O(log n) for insertion, O(1) for best price
 
 #### `CsvReader`
-- **Responsabilité** : Lecture et validation des fichiers CSV
-- **Validation** : Types de données, contraintes métier, gestion d'erreurs
-- **Support** : Multi-instruments avec groupement automatique
+- **Responsibility**: Reading and validating CSV files
+- **Validation**: Data types, business constraints, error handling
+- **Support**: Multi-instrument with automatic grouping
 
 #### `CsvWriter`
-- **Responsabilité** : Sérialisation des résultats au format CSV
-- **Format** : Compatible avec spécifications du projet
+- **Responsibility**: Serializing results to CSV format
+- **Format**: Compatible with project specifications
 
-### Algorithme de matching
-1. **Tri par timestamp** (si nécessaire)
-2. **Pour chaque ordre** :
-   - Validation des données
-   - Gestion de l'action (NEW/MODIFY/CANCEL)
-   - Tentative de matching avec carnet opposé
-   - Mise à jour du carnet et de l'historique
-3. **Gestion des exécutions partielles**
-4. **Logging détaillé** de chaque opération
+### Matching Algorithm
+1. **Sort by timestamp** (if necessary)
+2. **For each order**:
+   - Data validation
+   - Action handling (NEW/MODIFY/CANCEL)
+   - Attempt matching with opposite order book
+   - Update order book and history
+3. **Partial execution handling**
+4. **Detailed logging** of each operation
+
 ---
-Vous trouverez ci-dessous une vision schématisée du code (code couleur indiqué par le tableau).
+Below you will find a schematic view of the code (color code indicated by the table).
 ![Console Output](docs/images/schema-explicatif.png)
