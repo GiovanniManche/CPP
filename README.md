@@ -51,9 +51,9 @@ This matching engine supports essential order book operations with complete robu
 ### Available Actions
 - **NEW**: Add a new order to the order book
 - **MODIFY**: Modify an existing order. It is possible to modify the price and quantity. Note that modification causes loss of the time priority that the unmodified order would have had. Also, a quantity modification works according to the following logic if the order has already been partially executed:
-$$
+```math
 \text{newQty} = \text{remainingQty} - (\text{initialQty} - \text{modifiedQty})  
-$$
+```
 - If the modification is of such magnitude that the quantity would become negative, the order is simply considered executed and $\text{newQty} = 0$.
 
 - **CANCEL**: Cancel an existing order
